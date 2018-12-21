@@ -3,34 +3,46 @@ import random
 import torch
 from torch import optim
 
-from model import DQN
+from model import QNetwork
 
 
-class Agent():
-    def __init__(self, args, env):
-        self.action_space = env.action_space()
-        self.atoms = args.atoms
-        self.Vmin = args.V_min
-        self.Vmax = args.V_max
-        self.support = torch.linspace(args.V_min, args.V_max, self.atoms).to(device=args.device)  # Support (range) of z
-        self.delta_z = (args.V_max - args.V_min) / (self.atoms - 1)
-        self.batch_size = args.batch_size
-        self.n = args.multi_step
-        self.discount = args.discount
+class DQNAgent:
+    def __init__(self,
+                 env,
+                 model_name=None,
+                 discount_rate=0.99,
+                 batch_size=32,
+                 learning_rate=0.00001,
+                 adam_epsilon=1e-8,
+                 multi_step=3,
+                 atoms=51,
+                 v_min=-10,
+                 v_max=10,
+                 device='cpu'):
+        self.action_space = env.action_space
+        self.observation_space = env.observation_space
+        self.atoms = atoms
+        self.Vmin = v_min
+        self.Vmax = v_max
+        self.support = torch.linspace(v_min, v_max, self.atoms).to(device=device)  # Support (range) of z
+        self.delta_z = (v_max - v_min) / (atoms - 1)
+        self.batch_size = batch_size
+        self.n = multi_step
+        self.discount = discount_rate
 
-        self.online_net = DQN(args, self.action_space).to(device=args.device)
-        if args.model and os.path.isfile(args.model):
+        self.online_net = QNetwork(env).to(device=device)
+        if model_name and os.path.isfile(model_name):
             # Always load tensors onto CPU by default, will shift to GPU if necessary
-            self.online_net.load_state_dict(torch.load(args.model, map_location='cpu'))
+            self.online_net.load_state_dict(torch.load(model_name, map_location='cpu'))
         self.online_net.train()
 
-        self.target_net = DQN(args, self.action_space).to(device=args.device)
+        self.target_net = QNetwork(env).to(device=device)
         self.update_target_net()
         self.target_net.train()
         for param in self.target_net.parameters():
             param.requires_grad = False
 
-        self.optimiser = optim.Adam(self.online_net.parameters(), lr=args.lr, eps=args.adam_eps)
+        self.optimiser = optim.Adam(self.online_net.parameters(), lr=learning_rate, eps=adam_epsilon)
 
     # Resets noisy weights in all linear layers (of online net only)
     def reset_noise(self):

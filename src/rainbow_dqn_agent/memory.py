@@ -63,15 +63,21 @@ class SegmentTree:
 
 
 class ReplayMemory():
-    def __init__(self, args, capacity):
-        self.device = args.device
+    def __init__(self,
+                 capacity,
+                 device='cpu',
+                 history=1,
+                 discount=0.99,
+                 multi_step=3,
+                 priority_weight=0.4,
+                 priority_exponent=0.5):
         self.capacity = capacity
-        self.history = args.history_length
-        self.discount = args.discount
-        self.n = args.multi_step
-        self.priority_weight = args.priority_weight \
-            # Initial importance sampling weight β, annealed to 1 over course of training
-        self.priority_exponent = args.priority_exponent
+        self.device = device
+        self.history = history
+        self.discount = discount
+        self.n = multi_step
+        self.priority_weight = priority_weight
+        self.priority_exponent = priority_exponent
         self.t = 0  # Internal episode timestep counter
         self.transitions = SegmentTree(capacity)
 

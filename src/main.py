@@ -1,6 +1,8 @@
 import argparse
 import gym
 import banana
+from rainbow_dqn_agent import DQNAgent
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Rainbow DQN based navigation project")
@@ -56,43 +58,22 @@ def main():
 
     # Create environment
     env = gym.make("Banana-v1")
-    env.render('realtime')
+    env.render('training')
 
-    state = env.reset()
-    score = 0
-    done = False
-    while not done:
-        action = env.action_space.sample()
-        next_state, reward, done, _ = env.step(action)
-        score += reward
-        state = next_state
-    print(env)
-    # brain_name = env.brain_names[0]
-    # brain = env.brains[brain_name]
-    # env_info = env.reset(train_mode=True)[brain_name]
-    # action_size = brain.vector_action_space_size
-    #
-    # # examine the state space
-    # state = env_info.vector_observations[0]
-    # print('States look like:', state)
-    # state_size = len(state)
-    # print('States have length:', state_size)
-    #
-    # # Create rainbow DQN learning agent
-    # env_info = env.reset(train_mode=True)[brain_name]  # reset the environment
-    #
-    # state = env_info.vector_observations[0]  # get the current state
-    # score = 0  # initialize the score
-    # while True:
-    #     action = np.random.randint(action_size)  # select an action
-    #     env_info = env.step(action)[brain_name]  # send the action to the environment
-    #     next_state = env_info.vector_observations[0]  # get the next state
-    #     reward = env_info.rewards[0]  # get the reward
-    #     done = env_info.local_done[0]  # see if episode has finished
-    #     score += reward  # update the score
-    #     state = next_state  # roll over the state to next time step
-    #     if done:  # exit loop if episode finished
-    #         break
+    # Create agent
+    agent = DQNAgent(env)
+
+    for i in range(10):
+        state = env.reset()
+        score = 0
+        done = False
+        while not done:
+            action = env.action_space.sample()
+            next_state, reward, done, _ = env.step(action)
+            score += reward
+            state = next_state
+
+        print("score: {}".format(score))
 
 
 if __name__ == '__main__':

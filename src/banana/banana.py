@@ -22,12 +22,10 @@ class Banana(gym.Env):
         self.observation_space = gym.spaces.Box(low=0.0,
                                                 high=1.0,
                                                 shape=(self.brain.vector_observation_space_size,),
-                                                dtype=np.float)
+                                                dtype=np.float64)
 
         # Action space
         self.action_space = gym.spaces.Discrete(self.brain.vector_action_space_size)
-
-        # No need for memory
 
     def reset(self):
         train_mode = True if self.render_mode is 'training' else False
