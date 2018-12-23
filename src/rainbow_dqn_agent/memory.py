@@ -4,7 +4,7 @@ import torch
 import numpy as np
 
 Transition = namedtuple('Transition', ('timestep', 'state', 'action', 'reward', 'nonterminal'))
-blank_trans = Transition(0, torch.zeros(84, 84, dtype=torch.uint8), None, 0, False)
+blank_trans = Transition(0, torch.zeros(37, dtype=torch.float32), None, 0, False)
 
 
 # Segment tree data structure where parent node values are sum/max of children node values
@@ -62,7 +62,7 @@ class SegmentTree:
         return self.sum_tree[0]
 
 
-class ReplayMemory():
+class ReplayMemory:
     def __init__(self,
                  capacity,
                  device='cpu',
@@ -72,7 +72,7 @@ class ReplayMemory():
                  priority_weight=0.4,
                  priority_exponent=0.5):
         self.capacity = capacity
-        self.device = device
+        self.device = torch.device(device)
         self.history = history
         self.discount = discount
         self.n = multi_step
@@ -83,8 +83,6 @@ class ReplayMemory():
 
     # Adds state and action at time t, reward and terminal at time t + 1
     def append(self, state, action, reward, terminal):
-        state = state[-1].mul(255).to(dtype=torch.uint8,
-                                      device=torch.device('cpu'))  # Only store last frame + make discrete to save mem
         self.transitions.append(Transition(self.t, state, action, reward, not terminal),
                                 self.transitions.max)  # Store new transition with maximum priority
         self.t = 0 if terminal else self.t + 1  # Start new episodes with t = 0
@@ -121,9 +119,9 @@ class ReplayMemory():
         transition = self._get_transition(idx)
         # Create un-discretised state and nth next state
         state = torch.stack([trans.state for trans in transition[:self.history]]).to(dtype=torch.float32,
-                                                                                     device=self.device).div_(255)
+                                                                                     device=self.device)
         next_state = torch.stack([trans.state for trans in transition[self.n:self.n + self.history]]).to(
-            dtype=torch.float32, device=self.device).div_(255)
+            dtype=torch.float32, device=self.device)
         # Discrete action to be used as index
         action = torch.tensor([transition[self.history - 1].action], dtype=torch.int64, device=self.device)
         # Calculate truncated n-step discounted return \
@@ -142,13 +140,17 @@ class ReplayMemory():
         segment = p_total / batch_size  # Batch size number of segments, based on sum over all probabilities
         batch = [self._get_sample_from_segment(segment, i) for i in range(batch_size)]  # Get batch of valid samples
         probs, idxs, tree_idxs, states, actions, returns, next_states, nonterminals = zip(*batch)
-        states, next_states, = torch.stack(states), torch.stack(next_states)
-        actions, returns, nonterminals = torch.cat(actions), torch.cat(returns), torch.stack(nonterminals)
+
+        states = torch.stack(states)
+        next_states = torch.stack(next_states)
+        actions = torch.cat(actions)
+        returns = torch.cat(returns)
+        nonterminals = torch.stack(nonterminals)
         probs = np.array(probs, dtype=np.float32) / p_total  # Calculate normalised probabilities
         capacity = self.capacity if self.transitions.full else self.transitions.index
         weights = (capacity * probs) ** -self.priority_weight  # Compute importance-sampling weights w
-        weights = torch.tensor(weights / weights.max(), dtype=torch.float32,
-                               device=self.device)  # Normalise by max importance-sampling weight from batch
+        weights = torch.tensor(weights / weights.max(), dtype=torch.float32, device=self.device)
+
         return tree_idxs, states, actions, returns, next_states, nonterminals, weights
 
     def update_priorities(self, idxs, priorities):
@@ -174,7 +176,6 @@ class ReplayMemory():
             else:
                 state_stack[t] = self.transitions.data[self.current_idx + t - self.history + 1].state
                 prev_timestep -= 1
-        state = torch.stack(state_stack, 0).to(dtype=torch.float32, device=self.device).div_(
-            255)  # Agent will turn into batch
+        state = torch.stack(state_stack, 0).to(dtype=torch.float32, device=self.device)
         self.current_idx += 1
         return state

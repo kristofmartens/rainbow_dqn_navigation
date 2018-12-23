@@ -15,17 +15,17 @@ class DQNAgent:
                  learning_rate=0.00001,
                  adam_epsilon=1e-8,
                  multi_step=3,
-                 atoms=51,
+                 value_dist_size=51,
                  v_min=-10,
                  v_max=10,
                  device='cpu'):
-        self.action_space = env.action_space
+        self.action_space = env.action_space.n
         self.observation_space = env.observation_space
-        self.atoms = atoms
+        self.value_dist_size = value_dist_size
         self.Vmin = v_min
         self.Vmax = v_max
-        self.support = torch.linspace(v_min, v_max, self.atoms).to(device=device)  # Support (range) of z
-        self.delta_z = (v_max - v_min) / (atoms - 1)
+        self.support = torch.linspace(v_min, v_max, self.value_dist_size).to(device=device)  # Support (range) of z
+        self.delta_z = (v_max - v_min) / (value_dist_size - 1)
         self.batch_size = batch_size
         self.n = multi_step
         self.discount = discount_rate
@@ -85,12 +85,12 @@ class DQNAgent:
             l, u = b.floor().to(torch.int64), b.ceil().to(torch.int64)
             # Fix disappearing probability mass when l = b = u (b is int)
             l[(u > 0) * (l == u)] -= 1
-            u[(l < (self.atoms - 1)) * (l == u)] += 1
+            u[(l < (self.value_dist_size - 1)) * (l == u)] += 1
 
             # Distribute probability of Tz
-            m = states.new_zeros(self.batch_size, self.atoms)
-            offset = torch.linspace(0, ((self.batch_size - 1) * self.atoms), self.batch_size).unsqueeze(1).expand(
-                self.batch_size, self.atoms).to(actions)
+            m = states.new_zeros(self.batch_size, self.value_dist_size)
+            offset = torch.linspace(0, ((self.batch_size - 1) * self.value_dist_size), self.batch_size).unsqueeze(1).expand(
+                self.batch_size, self.value_dist_size).to(actions)
             m.view(-1).index_add_(0, (l + offset).view(-1),
                                   (pns_a * (u.float() - b)).view(-1))  # m_l = m_l + p(s_t+n, a*)(u - b)
             m.view(-1).index_add_(0, (u + offset).view(-1),
