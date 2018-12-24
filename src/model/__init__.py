@@ -1,1 +1,1 @@
-from .model import QNetwork
+from .model2 import QNetwork

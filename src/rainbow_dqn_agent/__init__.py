@@ -1,3 +1,2 @@
-from .noisy_linear import NoisyLinear
-from .dqn_agent import DQNAgent
-from .memory import ReplayMemory
+from .dqn_agent2 import DQNAgent
+from .memory2 import Transition, ReplayMemory
