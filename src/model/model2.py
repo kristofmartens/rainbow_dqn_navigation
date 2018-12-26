@@ -9,6 +9,7 @@ class QNetwork(nn.Module):
         if hidden_layers is None:
             hidden_layers = [64, 64, 64]
 
+        # Can't create NN in a loop, or it can't find the variables to optimize
         layer_dimensions = [env.observation_space.shape[0]] + hidden_layers + [env.action_space.n]
 
         # Linear layers
@@ -21,7 +22,7 @@ class QNetwork(nn.Module):
         self.fc_3 = nn.Linear(layer_dimensions[2], layer_dimensions[3])
         self.fc_bn_3 = nn.BatchNorm1d(layer_dimensions[3])
 
-        # Split up between value and advantage
+        # Split up between value and advantage Dueling DQN
         self.fc_h_v = nn.Linear(layer_dimensions[3], layer_dimensions[3])
         self.fc_h_a = nn.Linear(layer_dimensions[3], layer_dimensions[3])
 
@@ -36,7 +37,7 @@ class QNetwork(nn.Module):
         x = self.fc_bn_2(F.relu(self.fc_2(x)))
         x = self.fc_bn_3(F.relu(self.fc_3(x)))
 
-        value_stream = self.fc_z_v(F.relu(self.fc_h_v(x))).view(-1,1)
+        value_stream = self.fc_z_v(F.relu(self.fc_h_v(x))).view(-1, 1)
         advantage_stream = self.fc_z_a(F.relu(self.fc_h_a(x)))
         x = value_stream + advantage_stream - advantage_stream.mean(1, keepdim=True)
 

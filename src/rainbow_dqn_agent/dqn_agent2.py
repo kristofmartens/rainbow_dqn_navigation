@@ -8,7 +8,7 @@ import os
 
 
 class DQNAgent:
-    def __init__(self, env, gamma=0.99, device='cpu', batch_size=32, learning_rate=1e-4):
+    def __init__(self, env, gamma=0.99, device='cpu', batch_size=32, learning_rate=1e-4, epsilon=1e-8):
         self.env = env
         self.gamma = gamma
         self.device = device
@@ -24,7 +24,7 @@ class DQNAgent:
         for param in self.target_net.parameters():
             param.requires_grad = False
 
-        self.optimizer = Adam(self.online_net.parameters(), lr=learning_rate)
+        self.optimizer = Adam(self.online_net.parameters(), lr=learning_rate, eps=epsilon)
 
     def act(self, state):
         with torch.no_grad():
@@ -51,9 +51,9 @@ class DQNAgent:
         # Compute the Q values for this state and chosen actions
         state_action_values = self.online_net(state_batch).gather(1, action_batch)
         with torch.no_grad():
-            next_state_values = self.target_net(next_state_batch).max(1)[0].view(-1, 1)
+            next_state_values = self.target_net(next_state_batch).max(1)[0].view(-1, 1) # Double DQN
             expected_state_action_values = next_state_values * self.gamma * not_done_batch + reward_batch
-        loss = F.smooth_l1_loss(state_action_values, expected_state_action_values)
+        loss = F.smooth_l1_loss(state_action_values, expected_state_action_values) # Huber loss
 
         # Optimize model
         self.optimizer.zero_grad()
@@ -73,5 +73,9 @@ class DQNAgent:
     def eval(self):
         self.online_net.eval()
 
-    def save(self, path=""):
+    def save(self, path):
         torch.save(self.online_net.state_dict(), os.path.join(path, "model.pth"))
+
+    def load(self, path):
+        self.online_net.load_state_dict(torch.load(os.path.join(path, "model.pth"), map_location=self.device))
+        self.update_target_net()
