@@ -4,6 +4,7 @@ import torch
 from torch.nn import functional as F
 from torch.optim import Adam
 import random
+import os
 
 
 class DQNAgent:
@@ -49,15 +50,15 @@ class DQNAgent:
 
         # Compute the Q values for this state and chosen actions
         state_action_values = self.online_net(state_batch).gather(1, action_batch)
-        next_state_values = self.online_net(next_state_batch).max(1)[0].view(-1, 1)
-        expected_state_action_values = next_state_values * self.gamma * not_done_batch + reward_batch
+        with torch.no_grad():
+            next_state_values = self.target_net(next_state_batch).max(1)[0].view(-1, 1)
+            expected_state_action_values = next_state_values * self.gamma * not_done_batch + reward_batch
         loss = F.smooth_l1_loss(state_action_values, expected_state_action_values)
 
         # Optimize model
-        with torch.enable_grad():
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
 
     def q(self, state):
         with torch.no_grad():
@@ -71,3 +72,6 @@ class DQNAgent:
 
     def eval(self):
         self.online_net.eval()
+
+    def save(self, path=""):
+        torch.save(self.online_net.state_dict(), os.path.join(path, "model.pth"))

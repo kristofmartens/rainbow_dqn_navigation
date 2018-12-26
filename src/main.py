@@ -20,11 +20,11 @@ def parse_arguments():
     parser.add_argument('--vmax', type=int, default=2, help="Maximum value distribution support")
     parser.add_argument('--vmin', type=int, default=-2, help="Minimum value distribution support")
     parser.add_argument('--device', type=str, choices=['cpu', 'cuda'], default='cpu', help="Device where to train")
-    parser.add_argument('--memory-capacity', type=int, default=int(2e5), help="Size of the replay buffer")
+    parser.add_argument('--memory-capacity', type=int, default=int(3e5), help="Size of the replay buffer")
     parser.add_argument('--priority-weight', type=float, default=0.4,
                         help="Initial prioritised experience replay importance sampling weight")
     parser.add_argument('--priority-exponent', type=float, default=0.5, help="Prioritised experience replay exponent")
-    parser.add_argument('--max-steps', type=int, default=1e6, help="Maximum number of episodes")
+    parser.add_argument('--max-steps', type=int, default=1e7, help="Maximum number of episodes")
     parser.add_argument('--epsilon-greedy-steps', type=int, default=5e4, help="Initial steps to epsilon greedy explore")
     parser.add_argument('--learning-start', type=int, default=500, help="Number of iterations before start training")
     parser.add_argument('--evaluation-episodes', type=int, default=10,
@@ -153,6 +153,9 @@ def main():
             # Update target network for Double Q learning
             if step % args.target_update == 0:
                 agent.update_target_net()
+
+            if step % 10000 == 0:
+                agent.save("/Users/kristofmartens/project/reinforcement_learning/rainbow_dqn_navigation/result")
 
         # Update state
         state = next_state

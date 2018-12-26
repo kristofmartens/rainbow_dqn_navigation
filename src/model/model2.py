@@ -11,6 +11,7 @@ class QNetwork(nn.Module):
 
         layer_dimensions = [env.observation_space.shape[0]] + hidden_layers + [env.action_space.n]
 
+        # Linear layers
         self.fc_1 = nn.Linear(layer_dimensions[0], layer_dimensions[1])
         self.fc_bn_1 = nn.BatchNorm1d(layer_dimensions[1])
 
@@ -20,6 +21,13 @@ class QNetwork(nn.Module):
         self.fc_3 = nn.Linear(layer_dimensions[2], layer_dimensions[3])
         self.fc_bn_3 = nn.BatchNorm1d(layer_dimensions[3])
 
+        # Split up between value and advantage
+        self.fc_h_v = nn.Linear(layer_dimensions[3], layer_dimensions[3])
+        self.fc_h_a = nn.Linear(layer_dimensions[3], layer_dimensions[3])
+
+        self.fc_z_v = nn.Linear(layer_dimensions[3], 1)
+        self.fc_z_a = nn.Linear(layer_dimensions[3], layer_dimensions[4])
+
         self.fc_4 = nn.Linear(layer_dimensions[3], layer_dimensions[4])
 
     def forward(self, x):
@@ -27,6 +35,9 @@ class QNetwork(nn.Module):
         x = self.fc_bn_1(F.relu(self.fc_1(x)))
         x = self.fc_bn_2(F.relu(self.fc_2(x)))
         x = self.fc_bn_3(F.relu(self.fc_3(x)))
-        x = self.fc_4(x)
+
+        value_stream = self.fc_z_v(F.relu(self.fc_h_v(x))).view(-1,1)
+        advantage_stream = self.fc_z_a(F.relu(self.fc_h_a(x)))
+        x = value_stream + advantage_stream - advantage_stream.mean(1, keepdim=True)
 
         return x
